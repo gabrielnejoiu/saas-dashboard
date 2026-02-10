@@ -2,6 +2,15 @@
 
 A full-stack project management dashboard built with Next.js 16, featuring CRUD operations, real-time notifications, user profiles, comprehensive settings, and responsive design.
 
+## Live Demo
+
+**Try it now:** [https://dashboard-saas-alpha.vercel.app](https://dashboard-saas-alpha.vercel.app)
+
+| | Demo Credentials |
+|---|---|
+| Email | `demo@example.com` |
+| Password | `demo123` |
+
 ![Dashboard](docs/screenshots/08-dashboard-overview.png)
 
 ## Features
