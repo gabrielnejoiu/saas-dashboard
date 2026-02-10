@@ -58,8 +58,10 @@ prisma/*.db-journal
 # *.jpg
 # *.jpeg
 
-# MCP output
-.claude/mcp/
+# Claude Code configuration (private)
+.claude/
+CLAUDE.md
+.mcp.json
 
 # Old project files
 materiale-site/
