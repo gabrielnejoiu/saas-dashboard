@@ -2,7 +2,7 @@
 
 A full-stack project management dashboard built with Next.js 16, featuring CRUD operations, real-time notifications, user profiles, comprehensive settings, and responsive design.
 
-![Dashboard](docs/screenshots/03-dashboard.png)
+![Dashboard](docs/screenshots/08-dashboard-overview.png)
 
 ## Features
 
@@ -36,29 +36,39 @@ Create new account with name, email, and password.
 ![Register](docs/screenshots/02-register.png)
 
 ### Dashboard
-Overview with project statistics, trends chart, status distribution, and recent projects.
+Overview with project statistics, trends chart, status distribution, weekly activity, and recent projects.
 
-![Dashboard](docs/screenshots/03-dashboard.png)
+![Dashboard Overview](docs/screenshots/08-dashboard-overview.png)
 
-### Projects
+### Projects List
 Full CRUD operations with search, status filtering, and pagination.
 
-![Projects](docs/screenshots/04-projects.png)
+![Projects List](docs/screenshots/09-projects-list.png)
+
+### Create Project Modal
+Form with validation for creating new projects.
+
+![Create Project Modal](docs/screenshots/10-project-create-modal.png)
+
+### Status Filter
+Filter projects by status (All, Active, On Hold, Completed).
+
+![Status Filter](docs/screenshots/11-status-filter-dropdown.png)
 
 ### Notifications
 View, mark as read, and delete notifications with different types (info, success, warning).
 
-![Notifications](docs/screenshots/05-notifications.png)
+![Notifications](docs/screenshots/12-notifications-page.png)
 
 ### Profile
 User profile with personal information and activity statistics.
 
-![Profile](docs/screenshots/06-profile.png)
+![Profile](docs/screenshots/13-profile-page.png)
 
 ### Settings
-Comprehensive settings for notifications, appearance, privacy, and security.
+Comprehensive settings for notifications, appearance, privacy, security, and password management.
 
-![Settings](docs/screenshots/07-settings.png)
+![Settings](docs/screenshots/14-settings-page.png)
 
 ## Tech Stack
 
@@ -232,9 +242,13 @@ src/
 │   │   └── SessionProvider.tsx
 │   └── ui/                        # shadcn/ui components
 ├── hooks/
-│   └── useProjects.ts
+│   ├── index.ts                  # Barrel export
+│   ├── useDebounce.ts            # Debounce hook for search
+│   └── useProjects.ts            # Projects CRUD hook
 ├── lib/
+│   ├── api-utils.ts               # API response utilities
 │   ├── auth.ts                    # NextAuth configuration
+│   ├── auth-helpers.ts            # Auth helper functions
 │   ├── prisma.ts                  # Prisma client
 │   ├── utils.ts                   # Utility functions
 │   └── validators.ts              # Zod schemas
