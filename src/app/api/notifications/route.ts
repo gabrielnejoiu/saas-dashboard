@@ -1,41 +1,35 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId } from "@/lib/auth-helpers";
+import {
+  successResponse,
+  errorResponse,
+  unauthorizedResponse,
+  badRequestResponse,
+} from "@/lib/api-utils";
 
-// Helper function to get user ID from session
-async function getUserId(session: { user?: { id?: string; email?: string | null } } | null) {
-  if (!session?.user) return null;
-
-  // Try session.user.id first
-  if (session.user.id) return session.user.id;
-
-  // Fall back to looking up by email
-  if (session.user.email) {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
-    return user?.id || null;
-  }
-
-  return null;
-}
-
-// GET - List notifications for current user
+/**
+ * GET /api/notifications
+ * List notifications for current user
+ *
+ * Query params:
+ * - filter: "all" | "unread" (default: "all")
+ */
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     const userId = await getUserId(session);
 
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const filter = searchParams.get("filter") || "all"; // all, unread
+    const filter = searchParams.get("filter") || "all";
 
     const whereClause: { userId: string; read?: boolean } = {
-      userId: userId,
+      userId,
     };
 
     if (filter === "unread") {
@@ -48,68 +42,61 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       }),
       prisma.notification.count({
-        where: { userId: userId },
+        where: { userId },
       }),
       prisma.notification.count({
-        where: { userId: userId, read: false },
+        where: { userId, read: false },
       }),
     ]);
 
-    return NextResponse.json({
-      success: true,
-      data: notifications.map((n) => ({
+    return successResponse(
+      notifications.map((n) => ({
         ...n,
         createdAt: n.createdAt.toISOString(),
         updatedAt: n.updatedAt.toISOString(),
       })),
-      meta: {
+      {
         total: totalCount,
         unread: unreadCount,
         read: totalCount - unreadCount,
-      },
-    });
+      }
+    );
   } catch (error) {
     console.error("Notifications API error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch notifications" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to fetch notifications");
   }
 }
 
-// POST - Mark all notifications as read
+/**
+ * POST /api/notifications
+ * Perform bulk actions on notifications
+ *
+ * Body:
+ * - action: "mark-all-read"
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     const userId = await getUserId(session);
 
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const body = await request.json();
 
     if (body.action === "mark-all-read") {
       await prisma.notification.updateMany({
-        where: { userId: userId, read: false },
+        where: { userId, read: false },
         data: { read: true },
       });
 
-      return NextResponse.json({
-        success: true,
-        message: "All notifications marked as read",
-      });
+      return successResponse({ message: "All notifications marked as read" });
     }
 
-    return NextResponse.json(
-      { success: false, error: "Invalid action" },
-      { status: 400 }
-    );
+    return badRequestResponse("Invalid action");
   } catch (error) {
     console.error("Notifications API error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update notifications" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to update notifications");
   }
 }

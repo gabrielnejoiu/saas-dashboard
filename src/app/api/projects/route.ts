@@ -1,7 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createProjectSchema } from "@/lib/validators";
 import { Prisma, Status } from "@prisma/client";
+import {
+  successResponse,
+  errorResponse,
+  badRequestResponse,
+} from "@/lib/api-utils";
 
 /**
  * GET /api/projects
@@ -48,25 +53,15 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: projects,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+    return successResponse(projects, {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
     console.error("Error fetching projects:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch projects",
-      },
-      { status: 500 }
-    );
+    return errorResponse("Failed to fetch projects");
   }
 }
 
@@ -81,13 +76,9 @@ export async function POST(request: NextRequest) {
     // Validate input
     const validationResult = createProjectSchema.safeParse(body);
     if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Validation failed",
-          details: validationResult.error.flatten().fieldErrors,
-        },
-        { status: 400 }
+      return badRequestResponse(
+        "Validation failed",
+        validationResult.error.flatten().fieldErrors
       );
     }
 
@@ -104,21 +95,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: project,
-      },
-      { status: 201 }
-    );
+    return successResponse(project, undefined, 201);
   } catch (error) {
     console.error("Error creating project:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to create project",
-      },
-      { status: 500 }
-    );
+    return errorResponse("Failed to create project");
   }
 }

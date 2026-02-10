@@ -1,49 +1,43 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId } from "@/lib/auth-helpers";
+import {
+  successResponse,
+  errorResponse,
+  unauthorizedResponse,
+  notFoundResponse,
+} from "@/lib/api-utils";
 
-// Helper function to get user ID from session
-async function getUserId(session: { user?: { id?: string; email?: string | null } } | null) {
-  if (!session?.user) return null;
-
-  if (session.user.id) return session.user.id;
-
-  if (session.user.email) {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
-    return user?.id || null;
-  }
-
-  return null;
+interface RouteParams {
+  params: Promise<{ id: string }>;
 }
 
-// PATCH - Mark notification as read
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/**
+ * PATCH /api/notifications/:id
+ * Mark notification as read/unread
+ *
+ * Body:
+ * - read: boolean (optional, default: true)
+ */
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth();
     const userId = await getUserId(session);
 
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const { id } = await params;
 
     // Verify ownership
     const notification = await prisma.notification.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId },
     });
 
     if (!notification) {
-      return NextResponse.json(
-        { success: false, error: "Notification not found" },
-        { status: 404 }
-      );
+      return notFoundResponse("Notification");
     }
 
     const body = await request.json();
@@ -53,63 +47,48 @@ export async function PATCH(
       data: { read: body.read ?? true },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...updated,
-        createdAt: updated.createdAt.toISOString(),
-        updatedAt: updated.updatedAt.toISOString(),
-      },
+    return successResponse({
+      ...updated,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
     });
   } catch (error) {
     console.error("Notification PATCH error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update notification" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to update notification");
   }
 }
 
-// DELETE - Delete notification
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/**
+ * DELETE /api/notifications/:id
+ * Delete a notification
+ */
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth();
     const userId = await getUserId(session);
 
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const { id } = await params;
 
     // Verify ownership
     const notification = await prisma.notification.findFirst({
-      where: { id, userId: userId },
+      where: { id, userId },
     });
 
     if (!notification) {
-      return NextResponse.json(
-        { success: false, error: "Notification not found" },
-        { status: 404 }
-      );
+      return notFoundResponse("Notification");
     }
 
     await prisma.notification.delete({
       where: { id },
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Notification deleted",
-    });
+    return successResponse({ message: "Notification deleted" });
   } catch (error) {
     console.error("Notification DELETE error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete notification" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to delete notification");
   }
 }

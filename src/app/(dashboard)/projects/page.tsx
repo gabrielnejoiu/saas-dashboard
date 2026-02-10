@@ -23,6 +23,7 @@ export default function ProjectsPage() {
     status,
     page,
     meta,
+    statusCounts,
     setSearch,
     setStatus,
     setPage,
@@ -148,7 +149,7 @@ export default function ProjectsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {projects.filter((p) => p.status === "ACTIVE").length}
+                {statusCounts.active}
               </div>
             </CardContent>
           </Card>
@@ -158,7 +159,7 @@ export default function ProjectsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">
-                {projects.filter((p) => p.status === "ON_HOLD").length}
+                {statusCounts.onHold}
               </div>
             </CardContent>
           </Card>
@@ -168,7 +169,7 @@ export default function ProjectsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-muted-foreground">
-                {projects.filter((p) => p.status === "COMPLETED").length}
+                {statusCounts.completed}
               </div>
             </CardContent>
           </Card>

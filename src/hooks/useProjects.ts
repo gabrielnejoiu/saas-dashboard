@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useDebounce } from "./useDebounce";
 import type { Project, ProjectStatus, ApiResponse, CreateProjectDTO, UpdateProjectDTO } from "@/types/project";
 
 interface UseProjectsOptions {
@@ -21,6 +22,12 @@ interface UseProjectsReturn {
     limit: number;
     totalPages: number;
   };
+  /** Memoized counts by status from current page */
+  statusCounts: {
+    active: number;
+    onHold: number;
+    completed: number;
+  };
   setSearch: (search: string) => void;
   setStatus: (status: ProjectStatus | "ALL") => void;
   setPage: (page: number) => void;
@@ -30,6 +37,9 @@ interface UseProjectsReturn {
   deleteProject: (id: string) => Promise<boolean>;
   refetch: () => Promise<void>;
 }
+
+const ITEMS_PER_PAGE = 20;
+const DEBOUNCE_DELAY = 300;
 
 export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn {
   const { initialStatus = "ALL", initialSearch = "" } = options;
@@ -43,11 +53,19 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
   const [meta, setMeta] = useState({
     total: 0,
     page: 1,
-    limit: 10,
+    limit: ITEMS_PER_PAGE,
     totalPages: 0,
   });
 
-  const ITEMS_PER_PAGE = 20;
+  // Debounce search to avoid excessive API calls
+  const debouncedSearch = useDebounce(search, DEBOUNCE_DELAY);
+
+  // Memoize status counts to avoid recalculating on every render
+  const statusCounts = useMemo(() => ({
+    active: projects.filter((p) => p.status === "ACTIVE").length,
+    onHold: projects.filter((p) => p.status === "ON_HOLD").length,
+    completed: projects.filter((p) => p.status === "COMPLETED").length,
+  }), [projects]);
 
   const fetchProjects = useCallback(async () => {
     setIsLoading(true);
@@ -56,7 +74,7 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
     try {
       const params = new URLSearchParams();
       if (status !== "ALL") params.append("status", status);
-      if (search) params.append("search", search);
+      if (debouncedSearch) params.append("search", debouncedSearch);
       params.append("page", page.toString());
       params.append("limit", ITEMS_PER_PAGE.toString());
 
@@ -82,13 +100,13 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
     } finally {
       setIsLoading(false);
     }
-  }, [search, status, page]);
+  }, [debouncedSearch, status, page]);
 
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
 
-  const createProject = async (data: CreateProjectDTO): Promise<boolean> => {
+  const createProject = useCallback(async (data: CreateProjectDTO): Promise<boolean> => {
     try {
       const response = await fetch("/api/projects", {
         method: "POST",
@@ -113,9 +131,9 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
       console.error("Error creating project:", err);
       return false;
     }
-  };
+  }, [fetchProjects]);
 
-  const updateProject = async (
+  const updateProject = useCallback(async (
     id: string,
     data: UpdateProjectDTO
   ): Promise<boolean> => {
@@ -143,9 +161,9 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
       console.error("Error updating project:", err);
       return false;
     }
-  };
+  }, [fetchProjects]);
 
-  const deleteProject = async (id: string): Promise<boolean> => {
+  const deleteProject = useCallback(async (id: string): Promise<boolean> => {
     try {
       const response = await fetch(`/api/projects/${id}`, {
         method: "DELETE",
@@ -165,30 +183,30 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
       console.error("Error deleting project:", err);
       return false;
     }
-  };
+  }, [fetchProjects]);
 
   // Reset to page 1 when filters change
-  const handleSetSearch = (newSearch: string) => {
+  const handleSetSearch = useCallback((newSearch: string) => {
     setSearch(newSearch);
     setPageState(1);
-  };
+  }, []);
 
-  const handleSetStatus = (newStatus: ProjectStatus | "ALL") => {
+  const handleSetStatus = useCallback((newStatus: ProjectStatus | "ALL") => {
     setStatus(newStatus);
     setPageState(1);
-  };
+  }, []);
 
-  const setPage = (newPage: number) => {
+  const setPage = useCallback((newPage: number) => {
     if (newPage >= 1 && newPage <= meta.totalPages) {
       setPageState(newPage);
     }
-  };
+  }, [meta.totalPages]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearch("");
     setStatus("ALL");
     setPageState(1);
-  };
+  }, []);
 
   return {
     projects,
@@ -198,6 +216,7 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
     status,
     page,
     meta,
+    statusCounts,
     setSearch: handleSetSearch,
     setStatus: handleSetStatus,
     setPage,

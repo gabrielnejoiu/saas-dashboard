@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { successResponse, errorResponse, unauthorizedResponse } from "@/lib/api-utils";
 
+/**
+ * GET /api/dashboard
+ * Get dashboard statistics and chart data
+ */
 export async function GET() {
   try {
     const session = await auth();
 
     if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     // Get project statistics
@@ -19,24 +23,13 @@ export async function GET() {
       totalBudgetResult,
       recentProjects,
     ] = await Promise.all([
-      // Total projects
       prisma.project.count(),
-
-      // Active projects
       prisma.project.count({ where: { status: "ACTIVE" } }),
-
-      // On hold projects
       prisma.project.count({ where: { status: "ON_HOLD" } }),
-
-      // Completed projects
       prisma.project.count({ where: { status: "COMPLETED" } }),
-
-      // Total budget
       prisma.project.aggregate({
         _sum: { budget: true },
       }),
-
-      // Recent projects (last 5)
       prisma.project.findMany({
         take: 5,
         orderBy: { updatedAt: "desc" },
@@ -120,34 +113,28 @@ export async function GET() {
       { day: "Sun", tasks: Math.floor(Math.random() * 8) + 1 },
     ];
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        stats: {
-          totalProjects,
-          activeProjects,
-          onHoldProjects,
-          completedProjects,
-          totalBudget,
-          budgetUtilization,
-          teamMembers: teamMembersResult.length,
-        },
-        recentProjects: recentProjects.map((p) => ({
-          ...p,
-          deadline: p.deadline.toISOString(),
-        })),
-        charts: {
-          monthlyData: reorderedMonthlyData,
-          statusData,
-          weeklyActivity,
-        },
+    return successResponse({
+      stats: {
+        totalProjects,
+        activeProjects,
+        onHoldProjects,
+        completedProjects,
+        totalBudget,
+        budgetUtilization,
+        teamMembers: teamMembersResult.length,
+      },
+      recentProjects: recentProjects.map((p) => ({
+        ...p,
+        deadline: p.deadline.toISOString(),
+      })),
+      charts: {
+        monthlyData: reorderedMonthlyData,
+        statusData,
+        weeklyActivity,
       },
     });
   } catch (error) {
     console.error("Dashboard API error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch dashboard data" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to fetch dashboard data");
   }
 }

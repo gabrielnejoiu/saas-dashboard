@@ -1,7 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { getUserId } from "@/lib/auth-helpers";
+import {
+  successResponse,
+  errorResponse,
+  unauthorizedResponse,
+  notFoundResponse,
+  handleValidationError,
+} from "@/lib/api-utils";
 
 const profileUpdateSchema = z.object({
   name: z.string().min(2).max(100).optional(),
@@ -12,31 +20,17 @@ const profileUpdateSchema = z.object({
   bio: z.string().max(500).optional().nullable(),
 });
 
-// Helper function to get user ID from session
-async function getUserId(session: { user?: { id?: string; email?: string | null } } | null) {
-  if (!session?.user) return null;
-
-  if (session.user.id) return session.user.id;
-
-  if (session.user.email) {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
-    return user?.id || null;
-  }
-
-  return null;
-}
-
-// GET - Get current user profile
+/**
+ * GET /api/profile
+ * Get current user profile with stats
+ */
 export async function GET() {
   try {
     const session = await auth();
     const userId = await getUserId(session);
 
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const user = await prisma.user.findUnique({
@@ -56,10 +50,7 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: "User not found" },
-        { status: 404 }
-      );
+      return notFoundResponse("User");
     }
 
     // Get user's project stats
@@ -71,44 +62,45 @@ export async function GET() {
         prisma.project.count({ where: { status: "ON_HOLD" } }),
       ]);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...user,
-        createdAt: user.createdAt.toISOString(),
-        stats: {
-          projectsManaged,
-          completed: completedProjects,
-          inProgress: activeProjects,
-          onHold: onHoldProjects,
-        },
+    return successResponse({
+      ...user,
+      createdAt: user.createdAt.toISOString(),
+      stats: {
+        projectsManaged,
+        completed: completedProjects,
+        inProgress: activeProjects,
+        onHold: onHoldProjects,
       },
     });
   } catch (error) {
     console.error("Profile GET error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch profile" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to fetch profile");
   }
 }
 
-// PUT - Update current user profile
+/**
+ * PUT /api/profile
+ * Update current user profile
+ */
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
     const userId = await getUserId(session);
 
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const body = await request.json();
-    const validatedData = profileUpdateSchema.parse(body);
+
+    const validationResult = profileUpdateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return handleValidationError(validationResult.error);
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: validatedData,
+      data: validationResult.data,
       select: {
         id: true,
         name: true,
@@ -123,25 +115,16 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...updatedUser,
-        createdAt: updatedUser.createdAt.toISOString(),
-      },
+    return successResponse({
+      ...updatedUser,
+      createdAt: updatedUser.createdAt.toISOString(),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
+      return handleValidationError(error);
     }
 
     console.error("Profile PUT error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update profile" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to update profile");
   }
 }

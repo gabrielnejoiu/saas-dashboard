@@ -1,7 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updateProjectSchema } from "@/lib/validators";
 import { Prisma, Status } from "@prisma/client";
+import {
+  successResponse,
+  errorResponse,
+  notFoundResponse,
+  badRequestResponse,
+} from "@/lib/api-utils";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -20,28 +26,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     if (!project) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Project not found",
-        },
-        { status: 404 }
-      );
+      return notFoundResponse("Project");
     }
 
-    return NextResponse.json({
-      success: true,
-      data: project,
-    });
+    return successResponse(project);
   } catch (error) {
     console.error("Error fetching project:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch project",
-      },
-      { status: 500 }
-    );
+    return errorResponse("Failed to fetch project");
   }
 }
 
@@ -60,25 +51,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     });
 
     if (!existingProject) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Project not found",
-        },
-        { status: 404 }
-      );
+      return notFoundResponse("Project");
     }
 
     // Validate input
     const validationResult = updateProjectSchema.safeParse(body);
     if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Validation failed",
-          details: validationResult.error.flatten().fieldErrors,
-        },
-        { status: 400 }
+      return badRequestResponse(
+        "Validation failed",
+        validationResult.error.flatten().fieldErrors
       );
     }
 
@@ -98,19 +79,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       data: updateData,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: project,
-    });
+    return successResponse(project);
   } catch (error) {
     console.error("Error updating project:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to update project",
-      },
-      { status: 500 }
-    );
+    return errorResponse("Failed to update project");
   }
 }
 
@@ -128,13 +100,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
     if (!existingProject) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Project not found",
-        },
-        { status: 404 }
-      );
+      return notFoundResponse("Project");
     }
 
     // Delete project
@@ -142,18 +108,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       where: { id },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: "Project deleted successfully" },
-    });
+    return successResponse({ message: "Project deleted successfully" });
   } catch (error) {
     console.error("Error deleting project:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to delete project",
-      },
-      { status: 500 }
-    );
+    return errorResponse("Failed to delete project");
   }
 }
