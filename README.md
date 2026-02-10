@@ -394,29 +394,53 @@ interface Notification {
 | `npm run db:seed` | Seed database with sample data |
 | `npm run db:studio` | Open Prisma Studio |
 
-## Database Setup with Supabase
+## Documentation
 
-1. Create a free account at [supabase.com](https://supabase.com)
-2. Create a new project
-3. Go to **Settings > Database**
-4. Copy the connection strings:
-   - **Connection pooling** (port 6543) → `DATABASE_URL`
-   - **Direct connection** (port 5432) → `DIRECT_URL`
-5. Add `?pgbouncer=true` to the pooled URL
+| Guide | Description |
+|-------|-------------|
+| [Local Setup](docs/SETUP.md) | Complete local development setup guide |
+| [Deployment](docs/DEPLOYMENT.md) | Production deployment with Vercel & Supabase |
+| [API Reference](docs/API.md) | Full API documentation with examples |
 
-## Deployment
+---
 
-### Vercel (Recommended)
+## Deployment Options
 
-1. Push your code to GitHub
-2. Import the repository in [Vercel](https://vercel.com)
-3. Add environment variables:
-   - `DATABASE_URL` - PostgreSQL connection string
-   - `NEXTAUTH_SECRET` - Generate with `openssl rand -base64 32`
-   - `NEXTAUTH_URL` - Your production URL
-4. Deploy
+### Option 1: Vercel + Supabase (Recommended)
 
-### Docker
+The easiest way to deploy to production. See [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions.
+
+**Quick Overview:**
+
+1. **Create Supabase Project** at [supabase.com](https://supabase.com)
+2. **Get the Transaction Pooler URL** (Settings → Database → Connection string → Transaction mode):
+   ```
+   postgresql://postgres.[PROJECT]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+   ```
+   > **Important:** You MUST use the Transaction Pooler URL (port 6543) for Vercel. The direct connection (port 5432) won't work from serverless functions.
+
+3. **Deploy to Vercel:**
+   ```bash
+   npm install -g vercel
+   vercel login
+   vercel link
+
+   # Add environment variables
+   printf 'your-pooler-url?pgbouncer=true' | vercel env add DATABASE_URL production
+   printf "$(openssl rand -base64 32)" | vercel env add NEXTAUTH_SECRET production
+   printf 'https://your-app.vercel.app' | vercel env add NEXTAUTH_URL production
+
+   # Deploy
+   vercel --prod
+   ```
+
+4. **Seed the database:**
+   ```bash
+   export DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres"
+   npm run db:seed
+   ```
+
+### Option 2: Docker
 
 Build and run with Docker:
 
@@ -429,15 +453,31 @@ docker run -p 3000:3000 \
   saas-dashboard
 ```
 
-Or use Docker Compose for production:
+### Option 3: Any Node.js Host
 
-```bash
-# Set NEXTAUTH_SECRET in environment
-export NEXTAUTH_SECRET=$(openssl rand -base64 32)
+This app can run on any platform that supports Node.js 18+:
+- Railway
+- Render
+- DigitalOcean App Platform
+- AWS (EC2, ECS, Lambda)
+- Google Cloud Run
+- Self-hosted VPS
 
-# Start all services
-docker compose -f docker-compose.prod.yml up -d
-```
+**Requirements:**
+- Node.js 18+
+- PostgreSQL database
+- Environment variables configured
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string (use pooler URL for serverless) |
+| `NEXTAUTH_SECRET` | Yes | Secret for JWT signing (generate with `openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | Yes | Base URL of your application |
+| `DIRECT_URL` | No | Direct database URL for migrations (if using pooler)
 
 ## Contributing
 
