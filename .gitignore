@@ -53,10 +53,10 @@ prisma/*.db-journal
 *.local
 .cache/
 
-# Screenshots
-*.png
-*.jpg
-*.jpeg
+# Screenshots (except docs folder)
+# *.png  # Allow PNG files in docs/screenshots
+# *.jpg
+# *.jpeg
 
 # MCP output
 .claude/mcp/

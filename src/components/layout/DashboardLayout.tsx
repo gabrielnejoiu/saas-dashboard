@@ -13,21 +13,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="flex">
-        {/* Sidebar */}
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-        {/* Main content */}
-        <div className="flex-1 flex flex-col min-h-screen lg:ml-0">
-          <Header onMenuClick={() => setSidebarOpen(true)} />
+      {/* Main content - offset by sidebar width on desktop */}
+      <div className="flex flex-col min-h-screen lg:ml-64">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
 
-          <main className="flex-1 p-4 lg:p-6">
-            {children}
-          </main>
-        </div>
+        <main className="flex-1 p-4 lg:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

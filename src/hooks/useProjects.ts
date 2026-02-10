@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Project, ProjectStatus, ApiResponse } from "@/types/project";
+import type { Project, ProjectStatus, ApiResponse, CreateProjectDTO, UpdateProjectDTO } from "@/types/project";
 
 interface UseProjectsOptions {
   initialStatus?: ProjectStatus | "ALL";
@@ -14,6 +14,7 @@ interface UseProjectsReturn {
   error: string | null;
   search: string;
   status: ProjectStatus | "ALL";
+  page: number;
   meta: {
     total: number;
     page: number;
@@ -22,9 +23,10 @@ interface UseProjectsReturn {
   };
   setSearch: (search: string) => void;
   setStatus: (status: ProjectStatus | "ALL") => void;
+  setPage: (page: number) => void;
   clearFilters: () => void;
-  createProject: (data: Omit<Project, "id" | "createdAt" | "updatedAt">) => Promise<boolean>;
-  updateProject: (id: string, data: Partial<Project>) => Promise<boolean>;
+  createProject: (data: CreateProjectDTO) => Promise<boolean>;
+  updateProject: (id: string, data: UpdateProjectDTO) => Promise<boolean>;
   deleteProject: (id: string) => Promise<boolean>;
   refetch: () => Promise<void>;
 }
@@ -37,12 +39,15 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(initialSearch);
   const [status, setStatus] = useState<ProjectStatus | "ALL">(initialStatus);
+  const [page, setPageState] = useState(1);
   const [meta, setMeta] = useState({
     total: 0,
     page: 1,
     limit: 10,
     totalPages: 0,
   });
+
+  const ITEMS_PER_PAGE = 20;
 
   const fetchProjects = useCallback(async () => {
     setIsLoading(true);
@@ -52,7 +57,8 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
       const params = new URLSearchParams();
       if (status !== "ALL") params.append("status", status);
       if (search) params.append("search", search);
-      params.append("limit", "100"); // Get all for now
+      params.append("page", page.toString());
+      params.append("limit", ITEMS_PER_PAGE.toString());
 
       const response = await fetch(`/api/projects?${params.toString()}`);
       const data: ApiResponse<Project[]> = await response.json();
@@ -63,7 +69,7 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
           setMeta({
             total: data.meta.total || 0,
             page: data.meta.page || 1,
-            limit: data.meta.limit || 10,
+            limit: data.meta.limit || ITEMS_PER_PAGE,
             totalPages: data.meta.totalPages || 0,
           });
         }
@@ -76,15 +82,13 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
     } finally {
       setIsLoading(false);
     }
-  }, [search, status]);
+  }, [search, status, page]);
 
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
 
-  const createProject = async (
-    data: Omit<Project, "id" | "createdAt" | "updatedAt">
-  ): Promise<boolean> => {
+  const createProject = async (data: CreateProjectDTO): Promise<boolean> => {
     try {
       const response = await fetch("/api/projects", {
         method: "POST",
@@ -113,7 +117,7 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
 
   const updateProject = async (
     id: string,
-    data: Partial<Project>
+    data: UpdateProjectDTO
   ): Promise<boolean> => {
     try {
       const response = await fetch(`/api/projects/${id}`, {
@@ -163,9 +167,27 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
     }
   };
 
+  // Reset to page 1 when filters change
+  const handleSetSearch = (newSearch: string) => {
+    setSearch(newSearch);
+    setPageState(1);
+  };
+
+  const handleSetStatus = (newStatus: ProjectStatus | "ALL") => {
+    setStatus(newStatus);
+    setPageState(1);
+  };
+
+  const setPage = (newPage: number) => {
+    if (newPage >= 1 && newPage <= meta.totalPages) {
+      setPageState(newPage);
+    }
+  };
+
   const clearFilters = () => {
     setSearch("");
     setStatus("ALL");
+    setPageState(1);
   };
 
   return {
@@ -174,9 +196,11 @@ export function useProjects(options: UseProjectsOptions = {}): UseProjectsReturn
     error,
     search,
     status,
+    page,
     meta,
-    setSearch,
-    setStatus,
+    setSearch: handleSetSearch,
+    setStatus: handleSetStatus,
+    setPage,
     clearFilters,
     createProject,
     updateProject,

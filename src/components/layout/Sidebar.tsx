@@ -7,6 +7,8 @@ import {
   LayoutDashboard,
   FolderKanban,
   Settings,
+  Bell,
+  User,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,7 @@ interface SidebarProps {
 const navItems = [
   {
     title: "Dashboard",
-    href: "/projects",
+    href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
@@ -28,10 +30,19 @@ const navItems = [
     icon: FolderKanban,
   },
   {
+    title: "Notifications",
+    href: "/notifications",
+    icon: Bell,
+  },
+  {
+    title: "Profile",
+    href: "/profile",
+    icon: User,
+  },
+  {
     title: "Settings",
-    href: "/projects",
+    href: "/settings",
     icon: Settings,
-    disabled: true,
   },
 ];
 
@@ -51,13 +62,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-full w-64 bg-card border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:z-auto",
+          "fixed left-0 top-0 z-50 h-screen w-64 bg-card border-r transform transition-transform duration-200 ease-in-out",
+          "lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Logo / Brand */}
         <div className="flex h-16 items-center justify-between px-6 border-b">
-          <Link href="/projects" className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2">
             <FolderKanban className="h-6 w-6 text-primary" />
             <span className="font-bold text-lg">SaaS Dashboard</span>
           </Link>
@@ -78,14 +90,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             return (
               <Link
                 key={item.title}
-                href={item.disabled ? "#" : item.href}
-                onClick={item.disabled ? (e) => e.preventDefault() : onClose}
+                href={item.href}
+                onClick={onClose}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                   isActive
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                  item.disabled && "opacity-50 cursor-not-allowed"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <item.icon className="h-5 w-5" />

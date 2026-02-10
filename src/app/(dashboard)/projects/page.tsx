@@ -10,6 +10,7 @@ import { ProjectFilters } from "@/components/projects/ProjectFilters";
 import { ProjectTable } from "@/components/projects/ProjectTable";
 import { ProjectModal } from "@/components/projects/ProjectModal";
 import { DeleteConfirmDialog } from "@/components/projects/DeleteConfirmDialog";
+import { Pagination } from "@/components/ui/pagination";
 import { useProjects } from "@/hooks/useProjects";
 import type { Project, ProjectStatus } from "@/types/project";
 
@@ -20,9 +21,11 @@ export default function ProjectsPage() {
     error,
     search,
     status,
+    page,
     meta,
     setSearch,
     setStatus,
+    setPage,
     clearFilters,
     createProject,
     updateProject,
@@ -78,7 +81,7 @@ export default function ProjectsPage() {
         if (selectedProject) {
           success = await updateProject(selectedProject.id, projectData);
         } else {
-          success = await createProject(projectData as Project);
+          success = await createProject(projectData);
         }
 
         if (success) {
@@ -193,11 +196,22 @@ export default function ProjectsPage() {
             <Spinner size="lg" />
           </div>
         ) : (
-          <ProjectTable
-            projects={projects}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+          <>
+            <ProjectTable
+              projects={projects}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+
+            {/* Pagination */}
+            <Pagination
+              currentPage={page}
+              totalPages={meta.totalPages}
+              totalItems={meta.total}
+              itemsPerPage={meta.limit}
+              onPageChange={setPage}
+            />
+          </>
         )}
       </div>
 
